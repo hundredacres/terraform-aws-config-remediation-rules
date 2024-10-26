@@ -4,7 +4,7 @@
 [![trivy](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/trivy.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/trivy.yaml)
 [![yamllint](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/yamllint.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/yamllint.yaml)
 [![misspell](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/misspell.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/misspell.yaml)
-[![pre-commit-check](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit-check.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit-check.yaml)
+[![pre-commit-check](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit.yaml)
 <a href="https://twitter.com/intent/follow?screen_name=RhythmicTech"><img src="https://img.shields.io/twitter/follow/RhythmicTech?style=social&logo=twitter" alt="follow on Twitter"></a>
 
 ## Example
