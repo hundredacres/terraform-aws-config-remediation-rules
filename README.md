@@ -1,19 +1,11 @@
 # terraform-terraform-template
 Template repository for terraform modules. Good for any cloud and any provider.
 
-<<<<<<< Updated upstream
-[![tflint](https://github.com/rhythmictech/terraform-terraform-template/workflows/tflint/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-terraform-template/actions?query=workflow%3Atflint+event%3Apush+branch%3Amaster)
-[![trivy](https://github.com/rhythmictech/terraform-terraform-template/workflows/trivy/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-terraform-template/actions?query=workflow%3Atrivy+event%3Apush+branch%3Amaster)
-[![yamllint](https://github.com/rhythmictech/terraform-terraform-template/workflows/yamllint/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-terraform-template/actions?query=workflow%3Ayamllint+event%3Apush+branch%3Amaster)
-[![misspell](https://github.com/rhythmictech/terraform-terraform-template/workflows/misspell/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-terraform-template/actions?query=workflow%3Amisspell+event%3Apush+branch%3Amaster)
-[![pre-commit-check](https://github.com/rhythmictech/terraform-terraform-template/workflows/pre-commit-check/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-terraform-template/actions?query=workflow%3Apre-commit-check+event%3Apush+branch%3Amaster)
-=======
 [![tflint](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/tflint.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/tflint.yaml)
 [![trivy](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/trivy.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/trivy.yaml)
 [![yamllint](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/yamllint.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/yamllint.yaml)
 [![mispell](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/mispell.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/mispell.yaml)
 [![pre-commit-check](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit-check.yaml/badge.svg?branch=master&event=push)](https://github.com/rhythmictech/terraform-aws-config-remediation-rules/actions/workflows/pre-commit-check.yaml)
->>>>>>> Stashed changes
 <a href="https://twitter.com/intent/follow?screen_name=RhythmicTech"><img src="https://img.shields.io/twitter/follow/RhythmicTech?style=social&logo=twitter" alt="follow on Twitter"></a>
 
 ## Example
