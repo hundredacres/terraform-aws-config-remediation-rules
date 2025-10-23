@@ -25,16 +25,24 @@ data "aws_iam_policy_document" "assume_role" {
 }
 
 resource "aws_sns_topic" "admin_notifications" {
-  count = var.enable_sns_notifications ? 1 : 0
+  # Only create a new topic if SNS is enabled AND no existing topic ARN is provided
+  count = var.enable_sns_notifications && var.sns_topic_arn == "" ? 1 : 0
 
   name_prefix = "config-remediation-rules"
   tags        = local.tags
+}
+
+# Local to determine the SNS topic ARN to use (provided or created)
+locals {
+  sns_topic_arn_final = var.enable_sns_notifications ? (
+    var.sns_topic_arn != "" ? var.sns_topic_arn : try(aws_sns_topic.admin_notifications[0].arn, "")
+  ) : ""
 }
 
 data "aws_iam_policy_document" "publish_to_sns" {
   statement {
     effect    = "Allow"
     actions   = ["sns:Publish"]
-    resources = [try(aws_sns_topic.admin_notifications[0].arn, "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:nonexistent-topic")]
+    resources = [local.sns_topic_arn_final != "" ? local.sns_topic_arn_final : "arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:nonexistent-topic"]
   }
 }

@@ -33,7 +33,8 @@ locals {
   }
 
   # SNS topic ARN (used across multiple SSM documents)
-  sns_topic_arn = var.enable_sns_notifications ? try(aws_sns_topic.admin_notifications[0].arn, "") : ""
+  # Uses provided ARN if available, otherwise uses created topic, otherwise empty
+  sns_topic_arn = local.sns_topic_arn_final
 
   # Common IAM assume role policy for SSM (already defined in main.tf but referenced here for clarity)
   ssm_assume_role_policy = data.aws_iam_policy_document.assume_role.json

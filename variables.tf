@@ -15,6 +15,12 @@ variable "enable_sns_notifications" {
   default     = false
 }
 
+variable "sns_topic_arn" {
+  description = "ARN of an existing SNS topic to use for notifications. If not provided and enable_sns_notifications is true, a new topic will be created."
+  type        = string
+  default     = ""
+}
+
 variable "automatic_remediation" {
   description = "Enable automatic remediation (true) or manual approval (false). IMPORTANT: When false, Config will detect issues but require manual approval before remediation."
   type        = bool

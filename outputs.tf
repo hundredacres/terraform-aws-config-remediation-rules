@@ -14,8 +14,8 @@ output "enabled_rules_count" {
 }
 
 output "sns_topic_arn" {
-  description = "ARN of the SNS topic for notifications (if enabled)"
-  value       = var.enable_sns_notifications ? try(aws_sns_topic.admin_notifications[0].arn, null) : null
+  description = "ARN of the SNS topic for notifications (provided or created, if enabled)"
+  value       = local.sns_topic_arn_final != "" ? local.sns_topic_arn_final : null
 }
 
 output "config_rule_arns" {

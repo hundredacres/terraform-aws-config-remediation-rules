@@ -32,6 +32,9 @@ module "config_remediation_rules" {
   # Enable SNS notifications for remediation actions
   enable_sns_notifications = true
 
+  # Optional: Use an existing SNS topic instead of creating a new one
+  # sns_topic_arn = "arn:aws:sns:us-east-1:123456789012:existing-topic"
+
   tags = {
     Environment = "Production"
     Project     = "ExampleProject"
@@ -218,6 +221,39 @@ automatic_remediation = true
 2. You receive SNS notification (if enabled)
 3. Review the resource in AWS Config Console
 4. Click "Remediate" to manually trigger the action
+
+### SNS Notifications
+
+This module supports SNS notifications for remediation actions. You have two options:
+
+**Option 1: Create a new SNS topic (default)**
+```hcl
+module "config_remediation_rules" {
+  source = "rhythmictech/config-remediation-rules/aws"
+
+  enable_sns_notifications = true
+  # Module will create a new SNS topic named "config-remediation-rules-*"
+}
+```
+
+**Option 2: Use an existing SNS topic**
+```hcl
+module "config_remediation_rules" {
+  source = "rhythmictech/config-remediation-rules/aws"
+
+  enable_sns_notifications = true
+  sns_topic_arn           = "arn:aws:sns:us-east-1:123456789012:my-existing-topic"
+  # Module will use your existing topic instead of creating a new one
+}
+```
+
+**Benefits of using an existing topic:**
+- Centralized notification management across multiple modules
+- Pre-configured subscriptions (email, Lambda, etc.)
+- Consistent alert routing to existing monitoring systems
+- Reduced resource creation overhead
+
+**Note:** When using an existing topic, ensure the remediation IAM roles have `sns:Publish` permissions to your topic.
 
 ### Variable Validation
 
