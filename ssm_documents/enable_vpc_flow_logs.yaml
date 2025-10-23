@@ -12,27 +12,51 @@ parameters:
     description: 'The VPC ID to enable flow logs for'
 mainSteps:
   - name: CheckExistingFlowLogs
-    action: 'aws:executeAwsApi'
+    action: 'aws:executeScript'
     description: 'Check if VPC already has flow logs enabled'
     inputs:
-      Service: ec2
-      Api: DescribeFlowLogs
-      Filters:
-        - Name: resource-id
-          Values:
-            - '{{ VpcId }}'
+      Runtime: python3.11
+      Handler: check_flow_logs
+      Script: |
+        import boto3
+
+        def check_flow_logs(events, context):
+            ec2 = boto3.client('ec2')
+            vpc_id = events['VpcId']
+
+            response = ec2.describe_flow_logs(
+                Filters=[
+                    {
+                        'Name': 'resource-id',
+                        'Values': [vpc_id]
+                    }
+                ]
+            )
+
+            flow_logs = response.get('FlowLogs', [])
+            has_flow_logs = len(flow_logs) > 0
+
+            return {
+                'HasFlowLogs': has_flow_logs,
+                'FlowLogCount': len(flow_logs)
+            }
+      InputPayload:
+        VpcId: '{{ VpcId }}'
     outputs:
-      - Name: FlowLogs
-        Selector: $.FlowLogs
-        Type: MapList
+      - Name: HasFlowLogs
+        Selector: $.Payload.HasFlowLogs
+        Type: Boolean
+      - Name: FlowLogCount
+        Selector: $.Payload.FlowLogCount
+        Type: Integer
   - name: CheckIfFlowLogsExist
     action: 'aws:branch'
     description: 'Branch based on whether flow logs already exist'
     inputs:
       Choices:
         - NextStep: SkipCreation
-          Variable: '{{ CheckExistingFlowLogs.FlowLogs }}'
-          Contains: FlowLogId
+          Variable: '{{ CheckExistingFlowLogs.HasFlowLogs }}'
+          BooleanEquals: true
       Default: CreateLogGroup
   - name: CreateLogGroup
     action: 'aws:executeAwsApi'
