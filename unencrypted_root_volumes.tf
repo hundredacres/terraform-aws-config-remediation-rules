@@ -4,6 +4,8 @@ resource "aws_config_config_rule" "unencrypted_root_volume" {
   name        = "detect-unencrypted-root-volume"
   description = "Detects EC2 instances created with unencrypted root volumes"
 
+  tags = local.tags
+
   source {
     owner             = "AWS"
     source_identifier = "ENCRYPTED_VOLUMES"
@@ -30,11 +32,16 @@ resource "aws_config_remediation_configuration" "shutdown_unencrypted_instance" 
   count = var.enable_unencrypted_volume_shutdown ? 1 : 0
 
   config_rule_name           = aws_config_config_rule.unencrypted_root_volume[0].name
-  automatic                  = true
+  automatic                  = var.automatic_remediation
   maximum_automatic_attempts = 1
   resource_type              = "AWS::EC2::Instance"
   target_type                = "SSM_DOCUMENT"
   target_id                  = aws_ssm_document.shutdown_unencrypted_instance[0].name
+
+  parameter {
+    name         = "AutomationAssumeRole"
+    static_value = aws_iam_role.shutdown_unencrypted_instance[0].arn
+  }
 
   parameter {
     name           = "InstanceId"
@@ -50,7 +57,7 @@ resource "aws_iam_role" "shutdown_unencrypted_instance" {
   tags               = local.tags
 }
 
-data "aws_iam_policy_document" "shutdown_unencrypted_instance" {
+data "aws_iam_policy_document" "shutdown_unencrypted_instance_policy" {
   count = var.enable_unencrypted_volume_shutdown ? 1 : 0
 
   statement {
@@ -59,6 +66,8 @@ data "aws_iam_policy_document" "shutdown_unencrypted_instance" {
       "ec2:StopInstances",
       "ec2:DescribeInstances",
     ]
+    # Wildcard required: EC2 Describe* actions don't support resource-level permissions
+    # Config remediation passes specific instance ID to limit scope
     resources = ["*"]
   }
 }
@@ -68,11 +77,11 @@ resource "aws_iam_role_policy" "shutdown_unencrypted_instance" {
   name  = "config-remediation-shutdown-unencrypted-instance-policy"
   role  = aws_iam_role.shutdown_unencrypted_instance[0].id
 
-  policy = data.aws_iam_policy_document.shutdown_unencrypted_instance[0].json
+  policy = data.aws_iam_policy_document.shutdown_unencrypted_instance_policy[0].json
 }
 
 resource "aws_iam_role_policy" "shutdown_unencrypted_instance_publish_to_sns" {
-  count = var.enable_sns_notifications ? 1 : 0
+  count = var.enable_unencrypted_volume_shutdown && var.enable_sns_notifications ? 1 : 0
   name  = "config-remediation-shutdown-unencrypted-instance-publish-to-sns-policy"
   role  = aws_iam_role.shutdown_unencrypted_instance[0].id
 

@@ -31,7 +31,7 @@ resource "aws_config_remediation_configuration" "delete_nat_gateway" {
   count = var.enable_nat_gateway_deletion ? 1 : 0
 
   config_rule_name           = aws_config_config_rule.nat_gateway_created[0].name
-  automatic                  = true
+  automatic                  = var.automatic_remediation
   maximum_automatic_attempts = 1
   resource_type              = "AWS::EC2::NatGateway"
   target_type                = "SSM_DOCUMENT"
@@ -62,22 +62,26 @@ resource "aws_iam_role_policy" "delete_nat_gateway" {
   name = "config-remediation-delete-nat-gateway-policy"
   role = aws_iam_role.delete_nat_gateway[0].id
 
-  policy = data.aws_iam_policy_document.remediation_policy.json
+  policy = data.aws_iam_policy_document.delete_nat_gateway_policy[0].json
 }
 
-data "aws_iam_policy_document" "remediation_policy" {
+data "aws_iam_policy_document" "delete_nat_gateway_policy" {
+  count = var.enable_nat_gateway_deletion ? 1 : 0
+
   statement {
     effect = "Allow"
     actions = [
       "ec2:DeleteNatGateway",
       "ec2:DescribeNatGateways"
     ]
+    # Wildcard required: EC2 Describe* actions don't support resource-level permissions
+    # Scoped to this AWS account via remediation configuration
     resources = ["*"]
   }
 }
 
 resource "aws_iam_role_policy" "delete_nat_gateway_publish_to_sns" {
-  count = var.enable_sns_notifications ? 1 : 0
+  count = var.enable_nat_gateway_deletion && var.enable_sns_notifications ? 1 : 0
   name  = "config-remediation-delete-nat-gateway-publish-to-sns-policy"
   role  = aws_iam_role.delete_nat_gateway[0].id
 

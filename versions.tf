@@ -3,8 +3,9 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
+      source = "hashicorp/aws"
+      # Pessimistic constraint: allows minor/patch updates but prevents breaking changes from major versions
+      version = ">= 5.0, < 6.0"
     }
   }
 }

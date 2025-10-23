@@ -12,27 +12,95 @@ Here's what using the module will look like
 ```hcl
 module "config_remediation_rules" {
   source = "rhythmictech/config-remediation-rules/aws"
-  
+
   name = "example-remediation-rules"
+
+  # Enable specific remediation rules
   enable_nat_gateway_deletion = true
-  
+  enable_s3_bucket_public_read_prohibited = true
+  enable_iam_password_policy = true
+
+  # Configure IAM password policy requirements
+  iam_password_minimum_length = 16
+  iam_password_max_age = 90
+
+  # IMPORTANT: Enable automatic remediation (defaults to false for safety)
+  # When false, Config detects issues but requires manual approval
+  # When true, Config automatically remediates without approval
+  automatic_remediation = true
+
+  # Enable SNS notifications for remediation actions
+  enable_sns_notifications = true
+
   tags = {
     Environment = "Production"
     Project     = "ExampleProject"
   }
 }
+
+# Access outputs for integration with other modules
+output "enabled_rules_count" {
+  value = module.config_remediation_rules.enabled_rules_count
+}
+
+output "config_rule_arns" {
+  value = module.config_remediation_rules.config_rule_arns
+}
 ```
 
 ## About
-This module provides AWS Config remediation rules tied to automations in SSM. These are meant to be a starting point for automated remediations.  
+This module provides AWS Config remediation rules tied to automations in SSM. These are meant to be a starting point for automated remediations.
+
+**Key Features:**
+- **12 Gruntwork-compatible rules** covering IAM, S3, EC2, RDS, Lambda, and network security
+- **Automatic remediation** via AWS Config + SSM Automation
+- **SNS notifications** for all remediation actions (optional)
+- **Variable validation** prevents misconfigurations
+- **Comprehensive outputs** for monitoring and integration
+
+### Gruntwork Compatibility
+
+This module provides automatic remediation capabilities for all default rules from [Gruntwork's aws-config-rules module](https://docs.gruntwork.io/reference/modules/terraform-aws-security/aws-config-rules/). While Gruntwork's module focuses on **detection**, this module adds **automatic remediation**:
+
+| Gruntwork Rule | This Module | Remediation Action |
+|----------------|-------------|-------------------|
+| `enable_encrypted_volumes` | ✅ Covered | Shuts down non-compliant instances |
+| `enable_iam_password_policy` | ✅ Covered | Updates password policy automatically |
+| `enable_iam_user_unused_credentials_check` | ✅ Covered | Deactivates unused credentials |
+| `enable_insecure_sg_rules` | ✅ Covered | Deletes insecure rules |
+| `enable_rds_storage_encrypted` | ✅ Covered | Deletes unencrypted instances |
+| `enable_root_account_mfa` | ✅ Covered | Sends critical notifications |
+| `enable_s3_bucket_public_read_prohibited` | ✅ Covered | Removes public access |
+| `enable_s3_bucket_public_write_prohibited` | ✅ Covered | Removes public access |
+
+**Plus additional rules:**
+- NAT Gateway deletion
+- Public subnet resource management
+- Lambda VPC enforcement
+- S3 public access blocks
 
 ### Features
+
+**Network Security:**
 - Automatic deletion of NAT Gateways upon creation (optional)
 - Automatic deletion of resources (except load balancers) created in public subnets (optional)
+- Automatic deletion of security group rules allowing 0.0.0.0/0 access to admin or database ports (optional)
+- Automatic enablement of VPC Flow Logs for VPCs without them (optional)
+
+**Compute & Application Security:**
 - Automatic shutdown of EC2 instances created with unencrypted root volumes (optional)
 - Automatic deletion of Lambda functions not associated with a VPC (optional)
+
+**Data Security:**
+- Automatic deletion of RDS instances without storage encryption (optional)
 - Automatic enabling of S3 bucket public access block for newly created buckets (optional)
-- Automatic deletion of security group rules allowing 0.0.0.0/0 access to admin or database ports (optional)
+- Automatic remediation of S3 buckets that allow public read access (optional)
+- Automatic remediation of S3 buckets that allow public write access (optional)
+
+**Identity & Access Management:**
+- Automatic update of IAM password policy to meet compliance requirements (optional)
+- Automatic deactivation of unused IAM user credentials (optional)
+- Automatic notification when root account MFA is not enabled (optional)
 
 
 ## NAT Gateway Deletion Feature
@@ -70,6 +138,139 @@ When enabled, this module creates an AWS Config rule that detects security group
 
 **Note:** Use this feature with caution, as it will delete all security group rules allowing 0.0.0.0/0 access to the specified ports in the AWS account where it's deployed.
 
+## IAM Password Policy Feature
+When enabled, this module creates an AWS Config rule that checks whether the account password policy for IAM users meets the specified requirements. Upon detection of non-compliance, it triggers an SSM Automation document to update the password policy. This feature is disabled by default and can be enabled by setting `enable_iam_password_policy = true`.
+
+**Configurable parameters:**
+- `iam_password_require_uppercase` (default: true)
+- `iam_password_require_lowercase` (default: true)
+- `iam_password_require_symbols` (default: true)
+- `iam_password_require_numbers` (default: true)
+- `iam_password_minimum_length` (default: 16)
+- `iam_password_reuse_prevention` (default: 24)
+- `iam_password_max_age` (default: 90 days)
+
+## IAM Unused Credentials Check Feature
+When enabled, this module creates an AWS Config rule that checks whether IAM users have passwords or active access keys that have not been used within the specified number of days. Upon detection, it triggers an SSM Automation document to deactivate unused credentials and send a notification to an SNS topic. This feature is disabled by default and can be enabled by setting `enable_iam_unused_credentials_check = true`.
+
+**Default:** Credentials unused for 90 days will be deactivated (configurable via `iam_max_credential_usage_age`).
+
+**Note:** This feature deactivates access keys and removes console passwords for IAM users with unused credentials. Use with caution.
+
+## RDS Storage Encryption Feature
+When enabled, this module creates an AWS Config rule that checks whether storage encryption is enabled for RDS DB instances. Upon detection of an unencrypted instance, it triggers an SSM Automation document to delete the instance and send a notification to an SNS topic. This feature is disabled by default and can be enabled by setting `enable_rds_storage_encrypted = true`.
+
+**Note:** Use this feature with extreme caution, as it will delete RDS instances without encryption. The deletion skips final snapshots.
+
+## Root Account MFA Feature
+When enabled, this module creates an AWS Config rule that checks whether the root account has MFA enabled. Upon detection of MFA not being enabled, it triggers an SSM Automation document to send a critical notification to an SNS topic. This feature is disabled by default and can be enabled by setting `enable_root_account_mfa = true`.
+
+**Note:** Root account MFA cannot be automatically enabled and requires manual intervention. This rule only sends notifications.
+
+## S3 Bucket Public Read/Write Prohibited Features
+When enabled, these modules create AWS Config rules that check whether S3 buckets allow public read or write access. Upon detection, they trigger an SSM Automation document to remove public access by:
+- Removing public ACL grants
+- Deleting bucket policies that allow public access
+- Enabling S3 bucket public access block
+
+These features are disabled by default and can be enabled by setting:
+- `enable_s3_bucket_public_read_prohibited = true`
+- `enable_s3_bucket_public_write_prohibited = true`
+
+**Note:** This feature will modify bucket ACLs, policies, and public access block settings to prevent public access.
+
+## VPC Flow Logs Feature
+When enabled, this module creates an AWS Config rule that checks whether VPC Flow Logs are enabled for VPCs. Upon detection of a VPC without flow logs, it triggers an SSM Automation document to enable flow logs and send a notification to an SNS topic. This feature is disabled by default and can be enabled by setting `enable_vpc_flow_logs = true`.
+
+**Configuration:**
+- `vpc_flow_logs_log_group_prefix` - CloudWatch Log Group prefix (default: `/aws/vpc/flowlogs/`)
+- `vpc_flow_logs_traffic_type` - Traffic type to log: `ACCEPT`, `REJECT`, or `ALL` (default: `ALL`)
+
+**What it does:**
+1. Creates a CloudWatch Log Group for each VPC (e.g., `/aws/vpc/flowlogs/vpc-abc123`)
+2. Enables VPC Flow Logs to capture network traffic
+3. Creates necessary IAM roles for Flow Logs to write to CloudWatch
+
+**Note:** This feature helps with security monitoring, troubleshooting, and compliance. Flow logs incur CloudWatch Logs storage costs.
+
+## Configuration
+
+### Automatic vs Manual Remediation
+
+**IMPORTANT SAFETY FEATURE:** By default, `automatic_remediation = false`, which means:
+- ✅ AWS Config **detects** non-compliant resources
+- ✅ Remediation actions are **defined** but not executed
+- ⚠️ You must **manually approve** each remediation in the AWS Console
+
+To enable automatic remediation (use with caution):
+```hcl
+automatic_remediation = true
+```
+
+**Why this is safer:**
+- Test remediation actions before enabling automatic mode
+- Review what would be remediated first
+- Prevent accidental deletion of critical resources
+- Gradual rollout: detect first, remediate later
+
+**Manual Approval Process:**
+1. Config detects non-compliant resource
+2. You receive SNS notification (if enabled)
+3. Review the resource in AWS Config Console
+4. Click "Remediate" to manually trigger the action
+
+### Variable Validation
+
+This module includes built-in validation for IAM-related variables to prevent misconfigurations:
+
+| Variable | Valid Range | AWS Limit |
+|----------|-------------|-----------|
+| `iam_password_minimum_length` | 6-128 | AWS IAM limit |
+| `iam_password_reuse_prevention` | 1-24 | AWS IAM limit |
+| `iam_password_max_age` | 1-1095 days | AWS IAM limit |
+| `iam_max_credential_usage_age` | 1-365 days | Security best practice |
+
+If you provide invalid values, Terraform will fail at plan time with a clear error message:
+
+```
+Error: Invalid value for variable
+
+IAM password minimum length must be between 6 and 128 characters (AWS IAM limits).
+```
+
+### Module Outputs
+
+The module provides comprehensive outputs for monitoring and integration:
+
+```hcl
+# Summary outputs
+enabled_rules          # Map of all enabled rules
+enabled_rules_count    # Count of enabled rules
+sns_topic_arn         # SNS topic ARN (if enabled)
+
+# Resource outputs
+config_rule_arns      # ARNs of all Config rules
+iam_role_arns         # ARNs of all IAM roles
+ssm_document_names    # Names of all SSM documents
+```
+
+**Example usage:**
+```hcl
+# Monitor which rules are active
+output "active_remediations" {
+  value = module.config_remediation_rules.enabled_rules
+}
+
+# Use in CloudWatch alarms
+resource "aws_cloudwatch_metric_alarm" "config_compliance" {
+  alarm_name = "config-compliance-check"
+  # Reference specific rule ARN
+  dimensions = {
+    ConfigRuleName = module.config_remediation_rules.config_rule_arns["nat_gateway"]
+  }
+}
+```
+
 ## Architecture
 
 This architecture diagram illustrates the flow of the AWS Config Remediation Rules module:
@@ -85,6 +286,26 @@ This architecture diagram illustrates the flow of the AWS Config Remediation Rul
 4. **IAM Roles**: Each remediation action has an associated IAM role with the necessary permissions to perform the remediation.
 
 5. **SNS Topic**: If enabled, an SNS topic is created to send notifications about remediation actions.
+
+## Recent Improvements
+
+### Code Quality & Maintainability
+- ✅ **Safety by Default**: `automatic_remediation` defaults to `false` - requires manual approval
+- ✅ **Variable Validation**: All IAM-related variables now have built-in validation to prevent invalid configurations
+- ✅ **Consolidated S3 Rules**: S3 public read/write rules use `for_each` to eliminate duplication (58% reduction)
+- ✅ **Consistent SNS Logic**: All rules now properly check both rule-enabled and SNS-enabled conditions
+- ✅ **Comprehensive Outputs**: Added outputs for rule ARNs, role ARNs, and SSM document names
+- ✅ **Centralized Configuration**: New `locals.tf` provides common patterns and enabled rules summary
+
+### Breaking Changes
+⚠️ **Important:** `automatic_remediation` now defaults to `false` for safety.
+
+**If you were relying on automatic remediation**, add this to your module call:
+```hcl
+automatic_remediation = true
+```
+
+This change prevents accidental automatic remediation and gives you a chance to test first.
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements

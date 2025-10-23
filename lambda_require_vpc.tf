@@ -4,6 +4,8 @@ resource "aws_config_config_rule" "lambda_in_vpc" {
   name        = "ensure-lambda-in-vpc"
   description = "Ensures Lambda functions are associated with a VPC"
 
+  tags = local.tags
+
   source {
     owner             = "AWS"
     source_identifier = "LAMBDA_INSIDE_VPC"
@@ -30,11 +32,16 @@ resource "aws_config_remediation_configuration" "delete_non_vpc_lambda" {
   count = var.enable_non_vpc_lambda_deletion ? 1 : 0
 
   config_rule_name           = aws_config_config_rule.lambda_in_vpc[0].name
-  automatic                  = true
+  automatic                  = var.automatic_remediation
   maximum_automatic_attempts = 1
   resource_type              = "AWS::Lambda::Function"
   target_type                = "SSM_DOCUMENT"
   target_id                  = aws_ssm_document.delete_non_vpc_lambda[0].name
+
+  parameter {
+    name         = "AutomationAssumeRole"
+    static_value = aws_iam_role.delete_non_vpc_lambda[0].arn
+  }
 
   parameter {
     name           = "FunctionName"
@@ -51,7 +58,7 @@ resource "aws_iam_role" "delete_non_vpc_lambda" {
 }
 
 resource "aws_iam_role_policy" "delete_non_vpc_lambda_publish_to_sns" {
-  count = var.enable_sns_notifications ? 1 : 0
+  count = var.enable_non_vpc_lambda_deletion && var.enable_sns_notifications ? 1 : 0
 
   name = "config-remediation-delete-non-vpc-lambda-publish-to-sns-policy"
   role = aws_iam_role.delete_non_vpc_lambda[0].id
@@ -59,21 +66,26 @@ resource "aws_iam_role_policy" "delete_non_vpc_lambda_publish_to_sns" {
   policy = data.aws_iam_policy_document.publish_to_sns.json
 }
 
-data "aws_iam_policy_document" "non_vpc_lambda_remediation_policy" {
+data "aws_iam_policy_document" "delete_non_vpc_lambda_policy" {
+  count = var.enable_non_vpc_lambda_deletion ? 1 : 0
+
   statement {
     effect = "Allow"
     actions = [
       "lambda:DeleteFunction",
       "lambda:GetFunction",
     ]
+    # Wildcard used for simplicity across all Lambda functions in account
+    # Could be scoped to: arn:aws:lambda:*:${account_id}:function/*
+    # Config remediation passes specific function name to limit scope
     resources = ["*"]
   }
 }
 
-resource "aws_iam_role_policy" "non_vpc_lambda_remediation_policy" {
+resource "aws_iam_role_policy" "delete_non_vpc_lambda_policy" {
   count = var.enable_non_vpc_lambda_deletion ? 1 : 0
 
   name_prefix = "config-remediation-delete-non-vpc-lambda-policy"
   role        = aws_iam_role.delete_non_vpc_lambda[0].id
-  policy      = data.aws_iam_policy_document.non_vpc_lambda_remediation_policy.json
+  policy      = data.aws_iam_policy_document.delete_non_vpc_lambda_policy[0].json
 }

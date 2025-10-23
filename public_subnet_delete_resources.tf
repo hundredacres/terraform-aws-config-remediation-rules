@@ -3,6 +3,8 @@ resource "aws_config_config_rule" "public_subnet_resources" {
   name        = "detect-public-subnet-resources"
   description = "Detects resources created in public subnets (except load balancers)"
 
+  tags = local.tags
+
   source {
     owner             = "AWS"
     source_identifier = "VPC_PUBLIC_SUBNET_INSTANCE"
@@ -29,7 +31,7 @@ resource "aws_config_remediation_configuration" "delete_public_subnet_resource" 
   count = var.enable_public_subnet_resource_deletion ? 1 : 0
 
   config_rule_name           = aws_config_config_rule.public_subnet_resources[0].name
-  automatic                  = true
+  automatic                  = var.automatic_remediation
   maximum_automatic_attempts = 1
   resource_type              = "AWS::EC2::Instance" # This will be overridden by the actual resource type
   target_type                = "SSM_DOCUMENT"
@@ -61,7 +63,9 @@ resource "aws_iam_role" "delete_public_subnet_resource" {
   tags               = local.tags
 }
 
-data "aws_iam_policy_document" "delete_public_subnet_resource" {
+data "aws_iam_policy_document" "delete_public_subnet_resource_policy" {
+  count = var.enable_public_subnet_resource_deletion ? 1 : 0
+
   statement {
     effect = "Allow"
     actions = [
@@ -72,6 +76,8 @@ data "aws_iam_policy_document" "delete_public_subnet_resource" {
       "ecs:StopTask",
       "ecs:DescribeTasks"
     ]
+    # Wildcard required: Describe* actions across multiple services don't support resource-level permissions
+    # Config remediation passes specific resource ID to limit scope
     resources = ["*"]
   }
 }
@@ -81,11 +87,11 @@ resource "aws_iam_role_policy" "delete_public_subnet_resource" {
 
   name_prefix = "config-remediation-delete-public-subnet-resource"
   role        = aws_iam_role.delete_public_subnet_resource[0].id
-  policy      = data.aws_iam_policy_document.delete_public_subnet_resource.json
+  policy      = data.aws_iam_policy_document.delete_public_subnet_resource_policy[0].json
 }
 
 resource "aws_iam_role_policy" "delete_public_subnet_resource_publish_to_sns" {
-  count = var.enable_sns_notifications ? 1 : 0
+  count = var.enable_public_subnet_resource_deletion && var.enable_sns_notifications ? 1 : 0
   name  = "config-remediation-delete-public-subnet-resource-publish-to-sns-policy"
   role  = aws_iam_role.delete_public_subnet_resource[0].id
 
