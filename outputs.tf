@@ -73,3 +73,13 @@ output "ssm_document_names" {
     var.enable_vpc_flow_logs ? { enable_vpc_flow_logs = try(aws_ssm_document.enable_vpc_flow_logs[0].name, null) } : {}
   )
 }
+
+output "config_aggregator_arn" {
+  description = "ARN of the Config aggregator (if enabled)"
+  value       = var.enable_config_aggregator ? try(aws_config_configuration_aggregator.organization[0].arn, null) : null
+}
+
+output "config_aggregator_name" {
+  description = "Name of the Config aggregator (if enabled)"
+  value       = var.enable_config_aggregator ? var.config_aggregator_name : null
+}

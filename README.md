@@ -255,6 +255,65 @@ module "config_remediation_rules" {
 
 **Note:** When using an existing topic, ensure the remediation IAM roles have `sns:Publish` permissions to your topic.
 
+### AWS Config Aggregator for Organizations
+
+This module supports creating an AWS Config aggregator for AWS Organizations, which provides a centralized view of Config data (including compliance status and remediation results) across all accounts in your organization.
+
+**Prerequisites:**
+- Your AWS account must be the delegated administrator for AWS Config in your organization
+- AWS Config must be enabled in the organization accounts you want to aggregate data from
+- The organization must have all features enabled
+
+**To enable the aggregator:**
+
+```hcl
+module "config_remediation_rules" {
+  source = "rhythmictech/config-remediation-rules/aws"
+
+  # Enable Config aggregator
+  enable_config_aggregator = true
+  config_aggregator_name   = "my-organization-aggregator"
+
+  # Optional: Specify regions to aggregate from (empty list = all regions)
+  config_aggregator_regions = ["us-east-1", "us-west-2"]
+
+  # Enable your desired remediation rules
+  enable_iam_password_policy = true
+  enable_vpc_flow_logs       = true
+}
+```
+
+**Benefits of using an aggregator:**
+- **Centralized compliance dashboard** - View compliance status across all accounts from a single location
+- **Multi-account remediation tracking** - Monitor remediation actions across your entire organization
+- **Simplified auditing** - Generate compliance reports for all accounts without switching contexts
+- **Cross-account rule management** - Deploy rules once in the delegated admin account, view results everywhere
+
+**How it works:**
+1. The aggregator is created in your delegated administrator account
+2. Config data from all organization accounts flows to the aggregator
+3. You can view compliance status and remediation history for all accounts in the AWS Config console
+4. Individual accounts still perform their own remediations based on their deployed rules
+
+**Important notes:**
+- The aggregator only aggregates Config data; it doesn't deploy rules to member accounts
+- To apply remediation rules organization-wide, deploy this module to each account (or use StackSets)
+- The aggregator IAM role uses the AWS managed policy `AWSConfigRoleForOrganizations`
+- If `config_aggregator_regions` is empty, data from all enabled regions will be aggregated
+
+**Setting up the delegated administrator:**
+
+Before enabling the aggregator, you must designate a delegated administrator account:
+
+```bash
+# From your organization's management account
+aws organizations register-delegated-administrator \
+  --account-id 123456789012 \
+  --service-principal config.amazonaws.com
+```
+
+Once configured, you can access the aggregated view in the AWS Config console of your delegated administrator account.
+
 ### Variable Validation
 
 This module includes built-in validation for IAM-related variables to prevent misconfigurations:
@@ -283,6 +342,10 @@ The module provides comprehensive outputs for monitoring and integration:
 enabled_rules          # Map of all enabled rules
 enabled_rules_count    # Count of enabled rules
 sns_topic_arn         # SNS topic ARN (if enabled)
+
+# Aggregator outputs
+config_aggregator_arn  # ARN of Config aggregator (if enabled)
+config_aggregator_name # Name of Config aggregator (if enabled)
 
 # Resource outputs
 config_rule_arns      # ARNs of all Config rules

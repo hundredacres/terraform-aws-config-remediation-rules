@@ -195,3 +195,22 @@ variable "vpc_flow_logs_traffic_type" {
     error_message = "VPC Flow Logs traffic type must be one of: ACCEPT, REJECT, or ALL."
   }
 }
+
+# AWS Config Aggregator Variables
+variable "enable_config_aggregator" {
+  description = "Enable AWS Config aggregator for AWS Organizations. Requires this account to be the delegated administrator for Config in the organization."
+  type        = bool
+  default     = false
+}
+
+variable "config_aggregator_name" {
+  description = "Name of the AWS Config aggregator"
+  type        = string
+  default     = "organization-config-aggregator"
+}
+
+variable "config_aggregator_regions" {
+  description = "List of regions to aggregate Config data from. If empty, aggregates from all enabled regions."
+  type        = list(string)
+  default     = []
+}

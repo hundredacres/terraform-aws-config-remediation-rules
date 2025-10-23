@@ -2,16 +2,16 @@
 locals {
   s3_public_access_rules = {
     read = {
-      enabled             = var.enable_s3_bucket_public_read_prohibited
-      name                = "s3-bucket-public-read-prohibited"
-      description         = "Checks that your Amazon S3 buckets do not allow public read access"
-      source_identifier   = "S3_BUCKET_PUBLIC_READ_PROHIBITED"
+      enabled           = var.enable_s3_bucket_public_read_prohibited
+      name              = "s3-bucket-public-read-prohibited"
+      description       = "Checks that your Amazon S3 buckets do not allow public read access"
+      source_identifier = "S3_BUCKET_PUBLIC_READ_PROHIBITED"
     }
     write = {
-      enabled             = var.enable_s3_bucket_public_write_prohibited
-      name                = "s3-bucket-public-write-prohibited"
-      description         = "Checks that your Amazon S3 buckets do not allow public write access"
-      source_identifier   = "S3_BUCKET_PUBLIC_WRITE_PROHIBITED"
+      enabled           = var.enable_s3_bucket_public_write_prohibited
+      name              = "s3-bucket-public-write-prohibited"
+      description       = "Checks that your Amazon S3 buckets do not allow public write access"
+      source_identifier = "S3_BUCKET_PUBLIC_WRITE_PROHIBITED"
     }
   }
 
