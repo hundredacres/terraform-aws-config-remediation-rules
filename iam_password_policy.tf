@@ -11,13 +11,13 @@ resource "aws_config_config_rule" "iam_password_policy" {
   }
 
   input_parameters = jsonencode({
-    RequireUppercaseCharacters = var.iam_password_require_uppercase
-    RequireLowercaseCharacters = var.iam_password_require_lowercase
-    RequireSymbols             = var.iam_password_require_symbols
-    RequireNumbers             = var.iam_password_require_numbers
-    MinimumPasswordLength      = var.iam_password_minimum_length
-    PasswordReusePrevention    = var.iam_password_reuse_prevention
-    MaxPasswordAge             = var.iam_password_max_age
+    RequireUppercaseCharacters = tostring(var.iam_password_require_uppercase)
+    RequireLowercaseCharacters = tostring(var.iam_password_require_lowercase)
+    RequireSymbols             = tostring(var.iam_password_require_symbols)
+    RequireNumbers             = tostring(var.iam_password_require_numbers)
+    MinimumPasswordLength      = tostring(var.iam_password_minimum_length)
+    PasswordReusePrevention    = tostring(var.iam_password_reuse_prevention)
+    MaxPasswordAge             = tostring(var.iam_password_max_age)
   })
 }
 

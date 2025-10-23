@@ -11,7 +11,7 @@ resource "aws_config_config_rule" "iam_unused_credentials" {
   }
 
   input_parameters = jsonencode({
-    maxCredentialUsageAge = var.iam_max_credential_usage_age
+    maxCredentialUsageAge = tostring(var.iam_max_credential_usage_age)
   })
 }
 

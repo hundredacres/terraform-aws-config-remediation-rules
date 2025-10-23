@@ -26,7 +26,7 @@ mainSteps:
     action: 'aws:executeScript'
     description: 'Remove public ACL grants if present'
     inputs:
-      Runtime: python3.8
+      Runtime: python3.11
       Handler: remove_public_grants
       Script: |
         import boto3
@@ -69,7 +69,7 @@ mainSteps:
     action: 'aws:executeScript'
     description: 'Get and check bucket policy for public access'
     inputs:
-      Runtime: python3.8
+      Runtime: python3.11
       Handler: check_bucket_policy
       Script: |
         import boto3
