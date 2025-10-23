@@ -5,7 +5,7 @@ terraform {
     aws = {
       source = "hashicorp/aws"
       # Pessimistic constraint: allows minor/patch updates but prevents breaking changes from major versions
-      version = ">= 5.0, < 6.0"
+      version = "> 6.0"
     }
   }
 }
