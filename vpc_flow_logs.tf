@@ -1,5 +1,6 @@
+# Account-level Config rule (when create_organization_rules = false)
 resource "aws_config_config_rule" "vpc_flow_logs_enabled" {
-  count       = var.enable_vpc_flow_logs ? 1 : 0
+  count       = var.enable_vpc_flow_logs && !var.create_organization_rules ? 1 : 0
   name        = "vpc-flow-logs-enabled"
   description = "Checks whether Amazon VPC Flow Logs are enabled for VPCs"
 
@@ -13,6 +14,17 @@ resource "aws_config_config_rule" "vpc_flow_logs_enabled" {
   scope {
     compliance_resource_types = ["AWS::EC2::VPC"]
   }
+}
+
+# Organization-level Config rule (when create_organization_rules = true)
+resource "aws_config_organization_managed_rule" "vpc_flow_logs_enabled" {
+  count            = var.enable_vpc_flow_logs && var.create_organization_rules ? 1 : 0
+  name             = "vpc-flow-logs-enabled"
+  description      = "Checks whether Amazon VPC Flow Logs are enabled for VPCs"
+  rule_identifier  = "VPC_FLOW_LOGS_ENABLED"
+  excluded_accounts = var.excluded_accounts
+
+  resource_types_scope = ["AWS::EC2::VPC"]
 }
 
 resource "aws_ssm_document" "enable_vpc_flow_logs" {
@@ -31,8 +43,20 @@ resource "aws_ssm_document" "enable_vpc_flow_logs" {
   tags = local.tags
 }
 
+# Local to get the rule name regardless of which type was created
+locals {
+  vpc_flow_logs_rule_name = var.create_organization_rules ? (
+    length(aws_config_organization_managed_rule.vpc_flow_logs_enabled) > 0 ? aws_config_organization_managed_rule.vpc_flow_logs_enabled[0].name : ""
+  ) : (
+    length(aws_config_config_rule.vpc_flow_logs_enabled) > 0 ? aws_config_config_rule.vpc_flow_logs_enabled[0].name : ""
+  )
+}
+
+# Remediation configuration (works with both account and organization rules)
+# Note: For organization rules, remediation must be configured separately in each account
+# This remediation only works in the management account
 resource "aws_config_remediation_configuration" "enable_vpc_flow_logs" {
-  count            = var.enable_vpc_flow_logs ? 1 : 0
+  count            = var.enable_vpc_flow_logs && !var.create_organization_rules ? 1 : 0
   config_rule_name = aws_config_config_rule.vpc_flow_logs_enabled[0].name
   resource_type    = "AWS::EC2::VPC"
   target_type      = "SSM_DOCUMENT"
@@ -48,8 +72,9 @@ resource "aws_config_remediation_configuration" "enable_vpc_flow_logs" {
     resource_value = "RESOURCE_ID"
   }
 
-  automatic                  = var.automatic_remediation
-  maximum_automatic_attempts = 1
+  automatic                  = coalesce(var.vpc_flow_logs_automatic_remediation, var.automatic_remediation)
+  maximum_automatic_attempts = 5
+  retry_attempt_seconds      = 60
 }
 
 # IAM role for SSM automation

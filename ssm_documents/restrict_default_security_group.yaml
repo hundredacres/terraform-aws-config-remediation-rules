@@ -1,0 +1,166 @@
+schemaVersion: '0.3'
+description: 'Restrict VPC default security group by removing all ingress and egress rules'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: 'The ARN of the role that allows Automation to perform the actions'
+    default: ''
+  GroupId:
+    type: String
+    description: 'The ID of the default security group to restrict'
+  SNSTopicArn:
+    type: String
+    description: 'ARN of the SNS Topic for notifications'
+    default: ''
+mainSteps:
+  - name: GetSecurityGroupRules
+    action: 'aws:executeScript'
+    description: 'Get current ingress and egress rules for the security group'
+    inputs:
+      Runtime: python3.11
+      Handler: get_security_group_rules
+      Script: |
+        import boto3
+
+        def get_security_group_rules(events, context):
+            ec2 = boto3.client('ec2')
+            group_id = events['GroupId']
+
+            response = ec2.describe_security_groups(GroupIds=[group_id])
+            sg = response['SecurityGroups'][0]
+
+            ingress_rules = sg.get('IpPermissions', [])
+            egress_rules = sg.get('IpPermissionsEgress', [])
+
+            return {
+                'HasIngressRules': len(ingress_rules) > 0,
+                'HasEgressRules': len(egress_rules) > 0,
+                'IngressRuleCount': len(ingress_rules),
+                'EgressRuleCount': len(egress_rules)
+            }
+      InputPayload:
+        GroupId: '{{ GroupId }}'
+    outputs:
+      - Name: HasIngressRules
+        Selector: $.Payload.HasIngressRules
+        Type: Boolean
+      - Name: HasEgressRules
+        Selector: $.Payload.HasEgressRules
+        Type: Boolean
+      - Name: IngressRuleCount
+        Selector: $.Payload.IngressRuleCount
+        Type: Integer
+      - Name: EgressRuleCount
+        Selector: $.Payload.EgressRuleCount
+        Type: Integer
+
+  - name: CheckIfRulesExist
+    action: 'aws:branch'
+    description: 'Check if there are any rules to remove'
+    inputs:
+      Choices:
+        - NextStep: RevokeAllRules
+          Variable: '{{ GetSecurityGroupRules.HasIngressRules }}'
+          BooleanEquals: true
+        - NextStep: RevokeAllRules
+          Variable: '{{ GetSecurityGroupRules.HasEgressRules }}'
+          BooleanEquals: true
+      Default: SkipRemediation
+
+  - name: RevokeAllRules
+    action: 'aws:executeScript'
+    description: 'Remove all ingress and egress rules from the default security group'
+    inputs:
+      Runtime: python3.11
+      Handler: revoke_all_rules
+      Script: |
+        import boto3
+
+        def revoke_all_rules(events, context):
+            ec2 = boto3.client('ec2')
+            group_id = events['GroupId']
+            revoked_ingress = 0
+            revoked_egress = 0
+
+            # Get current rules
+            response = ec2.describe_security_groups(GroupIds=[group_id])
+            sg = response['SecurityGroups'][0]
+
+            # Revoke ingress rules
+            ingress_rules = sg.get('IpPermissions', [])
+            if ingress_rules:
+                try:
+                    ec2.revoke_security_group_ingress(
+                        GroupId=group_id,
+                        IpPermissions=ingress_rules
+                    )
+                    revoked_ingress = len(ingress_rules)
+                except Exception as e:
+                    print(f"Error revoking ingress rules: {str(e)}")
+
+            # Revoke egress rules
+            egress_rules = sg.get('IpPermissionsEgress', [])
+            if egress_rules:
+                try:
+                    ec2.revoke_security_group_egress(
+                        GroupId=group_id,
+                        IpPermissions=egress_rules
+                    )
+                    revoked_egress = len(egress_rules)
+                except Exception as e:
+                    print(f"Error revoking egress rules: {str(e)}")
+
+            return {
+                'RevokedIngressRules': revoked_ingress,
+                'RevokedEgressRules': revoked_egress,
+                'GroupId': group_id,
+                'Message': f'Restricted default security group {group_id}: removed {revoked_ingress} ingress and {revoked_egress} egress rules'
+            }
+      InputPayload:
+        GroupId: '{{ GroupId }}'
+    outputs:
+      - Name: RevokedIngressRules
+        Selector: $.Payload.RevokedIngressRules
+        Type: Integer
+      - Name: RevokedEgressRules
+        Selector: $.Payload.RevokedEgressRules
+        Type: Integer
+      - Name: Message
+        Selector: $.Payload.Message
+        Type: String
+
+  - name: CheckSNSTopicArn
+    action: 'aws:branch'
+    description: 'Check if SNS notification should be sent'
+    inputs:
+      Choices:
+        - NextStep: PublishSNS
+          Variable: '{{ SNSTopicArn }}'
+          StringNotEquals: ''
+      Default: EndSuccess
+
+  - name: PublishSNS
+    action: 'aws:executeAwsApi'
+    description: 'Send notification about the remediation'
+    inputs:
+      Service: sns
+      Api: Publish
+      TopicArn: '{{ SNSTopicArn }}'
+      Subject: 'AWS Config Remediation: Default Security Group Restricted'
+      Message: '{{ RevokeAllRules.Message }}'
+    isEnd: true
+
+  - name: SkipRemediation
+    action: 'aws:sleep'
+    description: 'No rules to remove, security group already restricted'
+    inputs:
+      Duration: PT1S
+    isEnd: true
+
+  - name: EndSuccess
+    action: 'aws:sleep'
+    description: 'Remediation complete'
+    inputs:
+      Duration: PT1S
+    isEnd: true

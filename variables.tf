@@ -27,6 +27,18 @@ variable "automatic_remediation" {
   default     = false
 }
 
+variable "create_organization_rules" {
+  description = "Create Config rules at the organization level (applies to all accounts). When false, rules are created at the account level only."
+  type        = bool
+  default     = false
+}
+
+variable "excluded_accounts" {
+  description = "List of AWS account IDs to exclude from organization-level Config rules."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_nat_gateway_deletion" {
   description = "Enable the rule to automatically delete NAT Gateways when created"
   type        = bool
@@ -179,6 +191,12 @@ variable "enable_vpc_flow_logs" {
   default     = false
 }
 
+variable "vpc_flow_logs_automatic_remediation" {
+  description = "Enable automatic remediation specifically for VPC Flow Logs rule. If null, falls back to var.automatic_remediation."
+  type        = bool
+  default     = null
+}
+
 variable "vpc_flow_logs_log_group_prefix" {
   description = "Prefix for CloudWatch Log Group names for VPC Flow Logs"
   type        = string
@@ -213,4 +231,17 @@ variable "config_aggregator_regions" {
   description = "List of regions to aggregate Config data from. If empty, aggregates from all enabled regions."
   type        = list(string)
   default     = []
+}
+
+# VPC Default Security Group Variables
+variable "enable_vpc_default_security_group_closed" {
+  description = "Enable the rule to automatically restrict VPC default security groups by removing all ingress and egress rules"
+  type        = bool
+  default     = false
+}
+
+variable "vpc_default_security_group_automatic_remediation" {
+  description = "Enable automatic remediation specifically for VPC default security group rule. If null, falls back to var.automatic_remediation."
+  type        = bool
+  default     = null
 }

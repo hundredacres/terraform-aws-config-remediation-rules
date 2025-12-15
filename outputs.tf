@@ -33,7 +33,8 @@ output "config_rule_arns" {
     var.enable_root_account_mfa ? { root_account_mfa = try(aws_config_config_rule.root_account_mfa[0].arn, null) } : {},
     var.enable_s3_bucket_public_read_prohibited ? { s3_bucket_public_read_prohibited = try(aws_config_config_rule.s3_bucket_public_access["read"].arn, null) } : {},
     var.enable_s3_bucket_public_write_prohibited ? { s3_bucket_public_write_prohibited = try(aws_config_config_rule.s3_bucket_public_access["write"].arn, null) } : {},
-    var.enable_vpc_flow_logs ? { vpc_flow_logs_enabled = try(aws_config_config_rule.vpc_flow_logs_enabled[0].arn, null) } : {}
+    var.enable_vpc_flow_logs ? { vpc_flow_logs_enabled = try(aws_config_config_rule.vpc_flow_logs_enabled[0].arn, null) } : {},
+    var.enable_vpc_default_security_group_closed ? { vpc_default_security_group_closed = try(aws_config_config_rule.vpc_default_security_group_closed[0].arn, null) } : {}
   )
 }
 
@@ -52,7 +53,8 @@ output "iam_role_arns" {
     var.enable_root_account_mfa ? { notify_root_mfa_disabled = try(aws_iam_role.notify_root_mfa_disabled[0].arn, null) } : {},
     (var.enable_s3_bucket_public_read_prohibited || var.enable_s3_bucket_public_write_prohibited) ? { remediate_s3_public_access = try(aws_iam_role.remediate_s3_public_access[0].arn, null) } : {},
     var.enable_vpc_flow_logs ? { enable_vpc_flow_logs_automation = try(aws_iam_role.enable_vpc_flow_logs_automation[0].arn, null) } : {},
-    var.enable_vpc_flow_logs ? { vpc_flow_logs = try(aws_iam_role.vpc_flow_logs[0].arn, null) } : {}
+    var.enable_vpc_flow_logs ? { vpc_flow_logs = try(aws_iam_role.vpc_flow_logs[0].arn, null) } : {},
+    var.enable_vpc_default_security_group_closed ? { restrict_default_security_group = try(aws_iam_role.restrict_default_security_group[0].arn, null) } : {}
   )
 }
 
@@ -70,7 +72,8 @@ output "ssm_document_names" {
     var.enable_rds_storage_encrypted ? { delete_unencrypted_rds = try(aws_ssm_document.delete_unencrypted_rds[0].name, null) } : {},
     var.enable_root_account_mfa ? { notify_root_mfa_disabled = try(aws_ssm_document.notify_root_mfa_disabled[0].name, null) } : {},
     (var.enable_s3_bucket_public_read_prohibited || var.enable_s3_bucket_public_write_prohibited) ? { remediate_s3_public_access = try(aws_ssm_document.remediate_s3_public_access[0].name, null) } : {},
-    var.enable_vpc_flow_logs ? { enable_vpc_flow_logs = try(aws_ssm_document.enable_vpc_flow_logs[0].name, null) } : {}
+    var.enable_vpc_flow_logs ? { enable_vpc_flow_logs = try(aws_ssm_document.enable_vpc_flow_logs[0].name, null) } : {},
+    var.enable_vpc_default_security_group_closed ? { restrict_default_security_group = try(aws_ssm_document.restrict_default_security_group[0].name, null) } : {}
   )
 }
 

@@ -14,6 +14,7 @@ locals {
     s3_bucket_public_read_prohibited  = var.enable_s3_bucket_public_read_prohibited
     s3_bucket_public_write_prohibited = var.enable_s3_bucket_public_write_prohibited
     vpc_flow_logs                     = var.enable_vpc_flow_logs
+    vpc_default_security_group_closed = var.enable_vpc_default_security_group_closed
   }
 
   # Common remediation configuration defaults
