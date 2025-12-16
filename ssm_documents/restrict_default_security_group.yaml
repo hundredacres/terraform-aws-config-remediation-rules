@@ -1,3 +1,4 @@
+---
 schemaVersion: '0.3'
 description: 'Restrict VPC default security group by removing all ingress and egress rules'
 assumeRole: '{{ AutomationAssumeRole }}'
@@ -9,10 +10,6 @@ parameters:
   GroupId:
     type: String
     description: 'The ID of the default security group to restrict'
-  SNSTopicArn:
-    type: String
-    description: 'ARN of the SNS Topic for notifications'
-    default: ''
 mainSteps:
   - name: GetSecurityGroupRules
     action: 'aws:executeScript'
@@ -129,38 +126,21 @@ mainSteps:
       - Name: Message
         Selector: $.Payload.Message
         Type: String
-
-  - name: CheckSNSTopicArn
-    action: 'aws:branch'
-    description: 'Check if SNS notification should be sent'
-    inputs:
-      Choices:
-        - NextStep: PublishSNS
-          Variable: '{{ SNSTopicArn }}'
-          StringNotEquals: ''
-      Default: EndSuccess
-
-  - name: PublishSNS
+%{ if SNSTopicArn != "" ~}
+  - name: SendNotification
     action: 'aws:executeAwsApi'
-    description: 'Send notification about the remediation'
+    description: 'Send SNS notification about the remediation'
     inputs:
       Service: sns
       Api: Publish
-      TopicArn: '{{ SNSTopicArn }}'
+      TopicArn: '${SNSTopicArn}'
       Subject: 'AWS Config Remediation: Default Security Group Restricted'
       Message: '{{ RevokeAllRules.Message }}'
     isEnd: true
-
+%{ endif ~}
   - name: SkipRemediation
     action: 'aws:sleep'
     description: 'No rules to remove, security group already restricted'
-    inputs:
-      Duration: PT1S
-    isEnd: true
-
-  - name: EndSuccess
-    action: 'aws:sleep'
-    description: 'Remediation complete'
     inputs:
       Duration: PT1S
     isEnd: true

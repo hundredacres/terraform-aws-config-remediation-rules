@@ -1,5 +1,6 @@
+# Account-level Config rule (when create_organization_rules = false)
 resource "aws_config_config_rule" "iam_password_policy" {
-  count       = var.enable_iam_password_policy ? 1 : 0
+  count       = var.enable_iam_password_policy && !var.create_organization_rules ? 1 : 0
   name        = "iam-password-policy"
   description = "Checks whether the account password policy for IAM users meets the specified requirements"
 
@@ -19,6 +20,34 @@ resource "aws_config_config_rule" "iam_password_policy" {
     PasswordReusePrevention    = tostring(var.iam_password_reuse_prevention)
     MaxPasswordAge             = tostring(var.iam_password_max_age)
   })
+}
+
+# Organization-level Config rule (when create_organization_rules = true)
+resource "aws_config_organization_managed_rule" "iam_password_policy" {
+  count             = var.enable_iam_password_policy && var.create_organization_rules ? 1 : 0
+  name              = "iam-password-policy"
+  description       = "Checks whether the account password policy for IAM users meets the specified requirements"
+  rule_identifier   = "IAM_PASSWORD_POLICY"
+  excluded_accounts = var.excluded_accounts
+
+  input_parameters = jsonencode({
+    RequireUppercaseCharacters = tostring(var.iam_password_require_uppercase)
+    RequireLowercaseCharacters = tostring(var.iam_password_require_lowercase)
+    RequireSymbols             = tostring(var.iam_password_require_symbols)
+    RequireNumbers             = tostring(var.iam_password_require_numbers)
+    MinimumPasswordLength      = tostring(var.iam_password_minimum_length)
+    PasswordReusePrevention    = tostring(var.iam_password_reuse_prevention)
+    MaxPasswordAge             = tostring(var.iam_password_max_age)
+  })
+}
+
+# Local to get the rule name regardless of which type was created
+locals {
+  iam_password_policy_rule_name = var.create_organization_rules ? (
+    length(aws_config_organization_managed_rule.iam_password_policy) > 0 ? aws_config_organization_managed_rule.iam_password_policy[0].name : ""
+    ) : (
+    length(aws_config_config_rule.iam_password_policy) > 0 ? aws_config_config_rule.iam_password_policy[0].name : ""
+  )
 }
 
 resource "aws_ssm_document" "update_iam_password_policy" {
@@ -41,8 +70,11 @@ resource "aws_ssm_document" "update_iam_password_policy" {
   tags = local.tags
 }
 
+# Remediation configuration (only works with account-level rules)
+# Note: For organization rules, remediation must be configured separately in each member account
+# via the config-recorder module
 resource "aws_config_remediation_configuration" "update_iam_password_policy" {
-  count            = var.enable_iam_password_policy ? 1 : 0
+  count            = var.enable_iam_password_policy && !var.create_organization_rules ? 1 : 0
   config_rule_name = aws_config_config_rule.iam_password_policy[0].name
   target_type      = "SSM_DOCUMENT"
   target_id        = aws_ssm_document.update_iam_password_policy[0].name
@@ -54,9 +86,16 @@ resource "aws_config_remediation_configuration" "update_iam_password_policy" {
 
   automatic = var.automatic_remediation
   # Higher retry count for non-destructive account-level policy updates
-  # See local.remediation_defaults_notifications for rationale
   maximum_automatic_attempts = 5
   retry_attempt_seconds      = 60
+
+  # Required for account-level rules without specific resource types
+  execution_controls {
+    ssm_controls {
+      concurrent_execution_rate_percentage = 25
+      error_percentage                     = 25
+    }
+  }
 }
 
 resource "aws_iam_role" "update_iam_password_policy" {

@@ -49,7 +49,7 @@ resource "aws_ssm_document" "restrict_default_security_group" {
 locals {
   vpc_default_sg_rule_name = var.create_organization_rules ? (
     length(aws_config_organization_managed_rule.vpc_default_security_group_closed) > 0 ? aws_config_organization_managed_rule.vpc_default_security_group_closed[0].name : ""
-  ) : (
+    ) : (
     length(aws_config_config_rule.vpc_default_security_group_closed) > 0 ? aws_config_config_rule.vpc_default_security_group_closed[0].name : ""
   )
 }
@@ -71,11 +71,6 @@ resource "aws_config_remediation_configuration" "restrict_default_security_group
   parameter {
     name           = "GroupId"
     resource_value = "RESOURCE_ID"
-  }
-
-  parameter {
-    name         = "SNSTopicArn"
-    static_value = local.sns_topic_arn_final
   }
 
   automatic                  = coalesce(var.vpc_default_security_group_automatic_remediation, var.automatic_remediation)

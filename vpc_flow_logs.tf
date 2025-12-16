@@ -18,10 +18,10 @@ resource "aws_config_config_rule" "vpc_flow_logs_enabled" {
 
 # Organization-level Config rule (when create_organization_rules = true)
 resource "aws_config_organization_managed_rule" "vpc_flow_logs_enabled" {
-  count            = var.enable_vpc_flow_logs && var.create_organization_rules ? 1 : 0
-  name             = "vpc-flow-logs-enabled"
-  description      = "Checks whether Amazon VPC Flow Logs are enabled for VPCs"
-  rule_identifier  = "VPC_FLOW_LOGS_ENABLED"
+  count             = var.enable_vpc_flow_logs && var.create_organization_rules ? 1 : 0
+  name              = "vpc-flow-logs-enabled"
+  description       = "Checks whether Amazon VPC Flow Logs are enabled for VPCs"
+  rule_identifier   = "VPC_FLOW_LOGS_ENABLED"
   excluded_accounts = var.excluded_accounts
 
   resource_types_scope = ["AWS::EC2::VPC"]
@@ -47,7 +47,7 @@ resource "aws_ssm_document" "enable_vpc_flow_logs" {
 locals {
   vpc_flow_logs_rule_name = var.create_organization_rules ? (
     length(aws_config_organization_managed_rule.vpc_flow_logs_enabled) > 0 ? aws_config_organization_managed_rule.vpc_flow_logs_enabled[0].name : ""
-  ) : (
+    ) : (
     length(aws_config_config_rule.vpc_flow_logs_enabled) > 0 ? aws_config_config_rule.vpc_flow_logs_enabled[0].name : ""
   )
 }
